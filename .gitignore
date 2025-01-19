@@ -1,4 +1,7 @@
 kernel
 image
 boot
+bin
 bzImage
+coreutil
+*.tar.gz
