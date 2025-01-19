@@ -1,0 +1,6 @@
+sudo rm -rf image
+mkdir -p image
+./scripts/makebin.sh
+./scripts/makekernel.sh
+./scripts/makecpio.sh
+./scripts/makeboot.sh
