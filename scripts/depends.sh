@@ -1,1 +1,1 @@
-sudo apt install isolinux dosfstools qemu-system docker bzip2 make gcc libncurses-dev flex bison bc cpio libelf-dev libssl-dev util-linux
+sudo apt install isolinux dosfstools qemu-system docker bzip2 make gcc libncurses-dev flex bison bc cpio libelf-dev libssl-dev util-linux grub2 grub-efi grub-rescue-pc
