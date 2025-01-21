@@ -28,7 +28,7 @@ and boots but does no additional work;
 you'll have access to a tiny `cat`-like
 utility for reading the contents of a file
 (to be replaced later), a hexidecimal
-editor named [nex](https://github.com/johnalexinl/nex), and a very minimal `shell`.
+editor named [nex](https://github.com/modula-dev/nex), and a very minimal `shell`.
 Currently, this build does not have a
 `shutdown` command of any kind,
 and it doesn't actually mount the file system
