@@ -1,6 +1,10 @@
 sudo rm -rf image
-mkdir -p image
-./scripts/makebin.sh
+mkdir -p image/initrd/bin
+mkdir -p image/root/boot/grub
+mkdir -p image/root/bin
+# ./scripts/makeclones.sh
 ./scripts/makekernel.sh
+./scripts/makebin.sh
 ./scripts/makecpio.sh
 ./scripts/makeboot.sh
+./scripts/makegrub.sh

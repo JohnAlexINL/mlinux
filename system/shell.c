@@ -10,28 +10,55 @@
 #include <dirent.h> // ls
 #include "share/file.c"
 
+extern char **environ; // ??
+
 const char *cmd_cd = "cd";
 const char *cmd_clear = "clear";
 const char *cmd_exit = "exit";
 const char *cmd_ls = "ls";
+const char *cmd_pid = "pid";
 
-char *trypath(char *command, char *cwd) {
-    char trypath[512]; char *result = malloc(sizeof(trypath));
+void prenv(char **args, char **environ) {
+    int i;
+    printf("Process Arguments;\n");
+    for (i=0; args[i]!=NULL; i++) { printf("   ... %s\n", args[i]); }
+    printf("Environment variables\n");
+    for (i=0; environ[i]!=NULL; i++) { printf("   ... %s\n", environ[i]); }
+}
+
+char *bwargs[255];
+char **builtin_binargs(char *command){
+    int i; int count = 0; int len = strlen(command);
+    for(i=0;i<len;i++) {
+        if (command[i] == ' ') { command[i]='\0'; bwargs[count+1] = (void*)command+(i+1); count++; }
+    }   bwargs[count+1] = NULL;
+    bwargs[0] = (void*)command;
+    return bwargs;
+}
+
+char *builtin_binpath(char *binary, char *cwd) {
+    char *result;
+    char trypath[512];
+    result = malloc(sizeof(trypath)); 
+    // first strip name at space or eol
+    int i; for (i=0;binary[i]!='\0';i++) {
+        if (binary[i]==' ') {
+            binary[i] = '\0'; break;
+        }
+    }
+    
     // try literal
-    if ( file_exists(command)) {
-        // technically redundant, 
-        // would make free() easier, but free also never happens
-        // bc the process should get replaced
+    if ( file_exists(binary)) {
         strncpy(result, trypath, sizeof(trypath));
-        return command;
+        return result;
     }
     // try in bin
-    sprintf(trypath, "bin/%s", command); if ( file_exists(trypath)) {
+    sprintf(trypath, "/bin/%s", binary); if ( file_exists(trypath)) {
         strncpy(result, trypath, sizeof(trypath));
         return result;
     }
     // try local
-    sprintf(trypath, "%s/%s", cwd, command); if ( file_exists(trypath)) {
+    sprintf(trypath, "%s/%s", cwd, binary); if ( file_exists(trypath)) {
         strncpy(result, trypath, sizeof(trypath));
         return result;
     }
@@ -50,15 +77,32 @@ void list_directory(const char *path) {
         if ( strcmp(entry->d_name, ".")==0 ) { continue; }
         if ( strcmp(entry->d_name, "..")==0 ) { continue; }
         printf("%s\n", entry->d_name);
-    }
-    closedir(dir);
+    }   closedir(dir);
+    return;
+}
+
+void builtin_cd (char *command) {
+    char *dir = command + strlen(cmd_cd) + 1; // ignore the space
+    if ( chdir(dir) != 0 ) {
+        printf("\e[0;31mERROR(\"cd %s\"): %s\n", dir, strerror(errno));
+    }   return;
+}
+
+void builtin_clear() {
+    int i; int j;
+    for (i=0;i<80;i++) { 
+    for (j=0;j<8;j++)  { 
+        printf("    ");} 
+        printf("\n");}
+    return;
 }
 
 int main(int argc, char **argv) {
+    pid_t pid = getpid(); 
     printf("\e[=3h"); // set color 80x25 text mode
     char context[512];
-    char cwd[255];
-	char command[255];
+	char command[512];
+    char cwd[512];
 	while (1) {
         // Write the context info and get a command
         getcwd(cwd, sizeof(cwd));
@@ -69,37 +113,20 @@ int main(int argc, char **argv) {
 
         // Check for built-in commands like cd
         if(strncmp(command, cmd_exit, strlen(cmd_exit))==0) { exit(0); }
-        if(strncmp(command, cmd_cd, strlen(cmd_cd))==0) {
-            char *dir = command + strlen(cmd_cd) + 1; // ignore the space
-            if ( chdir(dir) != 0 ) {
-                printf("\e[0;31mERROR(\"cd %s\"): %s\n", dir, strerror(errno));
-            }   continue;
-        }
-        if (strncmp(command, cmd_ls, strlen(cmd_ls))==0) {
-            list_directory(cwd);
-            continue;
-        }
-        if(strncmp(command, cmd_clear, strlen(cmd_clear))==0) {
-            // printf("\e[H\e[J\e[2J");
-            int i; int j;
-            for (i=0;i<80;i++) {
-            for (j=0;j<8;j++) {
-                printf("    ");
-            }   printf("\n");}
-            // printf("\e[1;1H"); 
-            continue;
-        }
+        if(strncmp(command, cmd_cd, strlen(cmd_cd))==0) { builtin_cd(command); continue; }
+        if(strncmp(command, cmd_ls, strlen(cmd_ls))==0) { list_directory(cwd); continue; }
+        if(strncmp(command, cmd_clear, strlen(cmd_clear))==0) { builtin_clear(); continue; }
+        if(strncmp(command, cmd_pid, strlen(cmd_pid))==0) { printf("current process id %d\n", pid); continue; }
         // Fork the process and try to run the command
 		pid_t pid = fork();
 		if (pid == 0) {
             int code;
-            char *args[] = { command, NULL };
-            char *path = trypath(command, cwd);
-            if ( path == NULL ) { printf("\e[0;31mFile not found\n"); exit(1); }
-            code = execve(path, args, NULL);
-            if ( code == -1 ) {
+            char **args = builtin_binargs(command);
+            char *path = builtin_binpath(command, cwd); if ( path == NULL ) { printf("\e[0;31mFile not found\n"); exit(1); }
+            // prenv(args, environ);
+            code = execve(path, args, environ); if ( code == -1 ) {
                 free(path);
-                printf("\e[0;31m%s: \e[0m%s\e[0m\n", path, strerror(errno));
+                printf("\e[0;31m%s: \e[0m%s\n", path, strerror(errno));
                 exit(1);
             }
 			break;

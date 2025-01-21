@@ -2,6 +2,8 @@ kernel
 image
 boot
 bin
+src
 bzImage
 coreutil
 *.tar.gz
+system/grub
